@@ -1,136 +1,169 @@
-import React, { Component } from 'react';
-import * as feedback from "./Feedback";
-//import { formatISO, parseISO, format } from "date-fns";
+import React, { Component, useEffect } from 'react';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { Toast, ToastBody, ToastHeader } from "reactstrap"
+import { formatISO, parseISO, format } from "date-fns";
 
 export class FeedbackForm extends Component {
     constructor(props) {
         super(props);
         this.state = {
+            saving: false,
+            showToast: false,
             feedback: Object.assign({}, this.props.feedback)
         };
 
-        this.state.feedback.feedbackType = '';
-        this.state.feedback.feedbackDate = true;
-        this.state.feedback.comments = "";
-        this.state.feedback.rating = null;
+        this.state.feedback.feedbackType = ''
+        this.state.feedback.feedbackDate = ''
+        this.state.feedback.comments = ''
+        this.state.feedback.rating = ''
 
         this.form = React.createRef();
+        this.toast = React.createRef();
+
         this.validate = this.validate.bind(this);
     }
 
     componentDidMount() {
+        if (this.state.showToast) {
+            setTimeout(() => this.setState({ showToast: false }), 3000)
+        }
+    }
+
+    componentDidUpdate() {
+        if (this.state.showToast) {
+            setTimeout(() => this.setState({ showToast: false }), 3000)
+        }
     }
 
     validate() {
         return this.form.current.reportValidity();
     }
 
-    handleSave = async () => {
+    handleSave = () => {
         if (this.validate()) {
+            this.setState({
+                saving: true
+            });
 
             const feedback1 = {
                 FeedbackType: this.state.feedback.feedbackType,
-                //FeedbackDate: this.state.feedback.feedbackDate,
+                FeedbackDate: (parseISO(this.state.feedback.feedbackDate).toISOString()),
                 Comments: this.state.feedback.comments,
                 Rating: this.state.feedback.rating
             };
 
-            feedback.create(feedback1).then((responseJson) => {
-
-            })
-            .catch((error) => {
-                if (error.message === "Bad Request") {
-                } else {
-                }
-            });
+            fetch('feedback',
+                {
+                    method: 'post',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(feedback1)
+                }).then((responseJson) => {
+                    this.setState({
+                        saving: false,
+                        showToast: true,
+                        feedback: {
+                            feedbackType: '',
+                            feedbackDate: '',
+                            comments: '',
+                            rating: ''
+                        }
+                    });
+                })
+                .catch((error) => {
+                    if (error.message === "Bad Request") {
+                    } else {
+                    }
+                });
         }
     };
 
     handleFeedbackTypeChange = e => {
-        let feedback = Object.assign({}, this.state.feedback, {
+        const feedback = Object.assign({}, this.state.feedback, {
             feedbackType: e.target.value
         });
         this.setState({ feedback });
     };
 
     handleFeedbackDateChange = e => {
-        let feedback = Object.assign({}, this.state.feedback, {
+        const feedback = Object.assign({}, this.state.feedback, {
             feedbackDate: e.target.value
         });
         this.setState({ feedback });
     };
 
     handleCommentsChange = e => {
-        let feedback = Object.assign({}, this.state.feedback, {
+        const feedback = Object.assign({}, this.state.feedback, {
             comments: e.target.value
         });
         this.setState({ feedback });
     };
 
     handleRatingChange = e => {
-        let feedback = Object.assign({}, this.state.feedback, {
+        const feedback = Object.assign({}, this.state.feedback, {
             rating: e.target.value
         });
         this.setState({ feedback });
     };
 
     render() {
-        let { feedback } = this.state;
+        let { feedback, showToast } = this.state;
 
         return (
-            <form ref={this.form} onSubmit={e => e.preventDefault()}>
+            <form className="feedback-form" ref={this.form} onSubmit={e => e.preventDefault()}>
                 <div className="card edit-detail">
                     <header className="card-header">
-
+                        <h1>Feedback Form</h1>
                     </header>
                     <div className="card-content">
                         <div className="content">
-                            <div className="field">
-                                <label className="label" htmlFor="feedback-type">
+                            <div className="mb-3">
+                                <label className="form-label" htmlFor="feedback-type">
                                     Feedback Type
                                 </label>
                                 <select
                                     name="feedback-type"
+                                    className="form-control"
                                     value={feedback.feedbackType}
                                     onChange={this.handleFeedbackTypeChange}>
+                                    <option value=''>Select Feedback Type...</option>
                                     <option value='complaint'>Complaint</option>
                                     <option value='comment'>Comment</option>
                                     <option value='suggestion'>Suggestion</option>
                                 </select>
                             </div>
-                            <div className="field">
-                                <label className="label" htmlFor="feedback-date">
+                            <div className="mb-3">
+                                <label className="form-label" htmlFor="feedback-date">
                                     Date
                                 </label>
                                 <input
                                     name="feedback-date"
-                                    className="input"
+                                    className="form-control"
                                     type="date"
-                                    defaultValue={feedback.feedbackDate}
+                                    value={feedback.feedbackDate}
                                     onChange={this.handleFeedbackDateChange}
                                 />
                             </div>
-                            <div className="field">
-                                <label className="label" htmlFor="Colour">
+                            <div className="mb-3">
+                                <label className="form-label" htmlFor="comments">
                                     Comments
                                 </label>
-                                <input
-                                    name="Colour"
-                                    className="input"
-                                    type="text"
-                                    defaultValue={feedback.comment}
+                                <textarea
+                                    name="comments"
+                                    className="form-control"
+                                    value={feedback.comments}
+                                    rows="4"
                                     onChange={this.handleCommentsChange}
                                 />
                             </div>
-                            <div className="field">
-                                <label className="label" htmlFor="rating">
+                            <div className="mb-3">
+                                <label className="form-label" htmlFor="rating">
                                     Rating
                                 </label>
                                 <input
                                     name="rating"
-                                    className="input"
+                                    className="form-control"
                                     type="number"
-                                    defaultValue={feedback.rating}
+                                    value={feedback.rating}
                                     onChange={this.handleRatingChange}
                                 />
                             </div>
@@ -140,9 +173,22 @@ export class FeedbackForm extends Component {
                         <button
                             className="save-button"
                             onClick={this.handleSave}
+                            disabled={this.state.saving}
                             label="Save">Save</button>
                     </footer>
                 </div>
+                <Toast isOpen={showToast}>
+                    <ToastHeader>
+                        <img
+                            src="holder.js/20x20?text=%20"
+                            className="rounded me-2"
+                            alt=""
+                        />
+                        <strong className="me-auto">Bootstrap</strong>
+                        <small>11 mins ago</small>
+                    </ToastHeader>
+                    <ToastBody>Woohoo, you're reading this text in a Toast!</ToastBody>
+                </Toast>
             </form>
         );
     }
