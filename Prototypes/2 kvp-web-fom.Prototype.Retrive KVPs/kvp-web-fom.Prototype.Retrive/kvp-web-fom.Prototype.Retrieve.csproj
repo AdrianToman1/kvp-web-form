@@ -10,8 +10,9 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
     <SpaProxyServerUrl>https://localhost:44403</SpaProxyServerUrl>
     <SpaProxyLaunchCommand>npm start</SpaProxyLaunchCommand>
-    <RootNamespace>kvp_web_fom.Prototype.Retrive</RootNamespace>
+    <RootNamespace>kvp_web_fom.Prototype.Retrieve</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>bd52219a-0941-4bdf-93c7-7a13c581dab7</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

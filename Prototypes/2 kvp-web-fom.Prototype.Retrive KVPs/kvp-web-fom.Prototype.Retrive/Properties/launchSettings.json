@@ -8,7 +8,7 @@
     }
   },
   "profiles": {
-    "kvp_web_fom.Prototype.Retrive": {
+    "kvp_web_fom.Prototype.Retrieve": {
       "commandName": "Project",
       "launchBrowser": true,
       "applicationUrl": "https://localhost:7010;http://localhost:5010",

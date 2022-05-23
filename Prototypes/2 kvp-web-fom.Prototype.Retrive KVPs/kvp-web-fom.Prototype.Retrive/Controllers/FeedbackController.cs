@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Cosmos;
 
-namespace kvp_web_fom.Prototype.Retrive.Controllers
+namespace kvp_web_fom.Prototype.Retrieve.Controllers
 {
     [ApiController]
     [Route("[controller]")]
