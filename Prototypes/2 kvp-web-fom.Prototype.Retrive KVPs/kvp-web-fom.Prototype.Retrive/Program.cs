@@ -1,8 +1,11 @@
+using kvp_web_fom.Prototype.Retrieve;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddSingleton<CosmosClientProvider>(CosmosClientProvider.CreateInstance(builder.Configuration["CosmosDb:AccountEndpoint"], builder.Configuration["CosmosDb:AuthKey"], builder.Configuration["CosmosDb:DatabaseId"]));
 
 var app = builder.Build();
 
@@ -23,6 +26,6 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller}/{action=Index}/{id?}");
 
-app.MapFallbackToFile("index.html"); ;
+app.MapFallbackToFile("index.html");
 
 app.Run();

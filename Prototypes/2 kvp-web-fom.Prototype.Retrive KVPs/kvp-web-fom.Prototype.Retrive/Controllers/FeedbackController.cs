@@ -8,21 +8,31 @@ namespace kvp_web_fom.Prototype.Retrieve.Controllers
     public class FeedbackController : ControllerBase
     {
         private readonly ILogger<FeedbackController> _logger;
+        private readonly CosmosClientProvider _cosmosClientProvider;
 
-        public FeedbackController(ILogger<FeedbackController> logger)
+        public FeedbackController(CosmosClientProvider cosmosClientProvider, ILogger<FeedbackController> logger)
         {
-            _logger = logger;
+            _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            if (_cosmosClientProvider.Container == null)
+            {
+                throw new ArgumentException($"{nameof(_cosmosClientProvider.Container)} must have a value", nameof(cosmosClientProvider));
+            }
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] FeedbackRequest feedbackRequest)
+        public async Task<IActionResult> Post([FromBody] FeedbackRequest feedbackRequest, CancellationToken cancellationToken = default)
         {
-            var endpointUri = "https://localhost:8081";
-            var primaryKey = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
+            if (feedbackRequest == null)
+            {
+                throw new ArgumentNullException(nameof(feedbackRequest));
+            }
 
-            var cosmosClient = new CosmosClient(endpointUri, primaryKey);
-            var database = await cosmosClient.CreateDatabaseIfNotExistsAsync("kvp-web-form");
-            var container = await database.Database.CreateContainerIfNotExistsAsync("Basic", "/FeedbackType");
+            if (!ModelState.IsValid)
+            {
+                return BadRequest();
+            }
 
             var feedBack = new Feedback
             {
@@ -32,7 +42,7 @@ namespace kvp_web_fom.Prototype.Retrieve.Controllers
                 Rating = feedbackRequest.Rating,
             };
 
-            var wakefieldFamilyResponse = await container.Container.CreateItemAsync<Feedback>(feedBack);
+            _ = await _cosmosClientProvider.Container.CreateItemAsync<Feedback>(feedBack, null, null, cancellationToken);
 
             return Ok();
         }
