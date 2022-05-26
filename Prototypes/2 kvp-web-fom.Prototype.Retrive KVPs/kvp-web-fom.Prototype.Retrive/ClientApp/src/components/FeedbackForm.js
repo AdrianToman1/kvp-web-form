@@ -7,6 +7,7 @@ export class FeedbackForm extends Component {
     constructor(props) {
         super(props);
         this.state = {
+            loading: false,
             saving: false,
             showToast: false,
             feedback: Object.assign({}, this.props.feedback)
@@ -24,6 +25,34 @@ export class FeedbackForm extends Component {
     }
 
     componentDidMount() {
+        if (this.props.match.params.id) {
+            this.setState({
+                loading: true
+            });
+
+            fetch(`feedback/${this.props.match.params.id}`,
+                    {
+                        method: 'get',
+                })
+                .then((response) => 
+                        response.json()
+                )
+                .then((responseJson) => {
+                    this.setState({
+                        loading: false, feedback: {
+                            feedbackType: responseJson.feedbackType,
+                            feedbackDate: formatISO(parseISO(responseJson.feedbackDate), { representation: 'date' }),
+                            comments: responseJson.comments,
+                            rating: responseJson.rating
+                        }})
+                })
+                .catch((error) => {
+                    if (error.message === "Not Found") {
+                    } else {
+                    }
+                });
+        }
+
         if (this.state.showToast) {
             setTimeout(() => this.setState({ showToast: false }), 3000)
         }
@@ -43,37 +72,31 @@ export class FeedbackForm extends Component {
         if (this.validate()) {
             this.setState({
                 saving: true
-            });
+            })
 
             const feedback1 = {
                 FeedbackType: this.state.feedback.feedbackType,
                 FeedbackDate: (parseISO(this.state.feedback.feedbackDate).toISOString()),
                 Comments: this.state.feedback.comments,
                 Rating: this.state.feedback.rating
-            };
+            }
 
-            fetch('feedback',
+            fetch(`feedback/${this.props.match.params.id}`,
                 {
-                    method: 'post',
+                    method: 'put',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(feedback1)
                 }).then((responseJson) => {
                     this.setState({
                         saving: false,
-                        showToast: true,
-                        feedback: {
-                            feedbackType: '',
-                            feedbackDate: '',
-                            comments: '',
-                            rating: ''
-                        }
-                    });
+                        showToast: true
+                    })
                 })
                 .catch((error) => {
                     if (error.message === "Bad Request") {
                     } else {
                     }
-                });
+                })
         }
     };
 
@@ -106,7 +129,11 @@ export class FeedbackForm extends Component {
     };
 
     render() {
-        let { feedback, showToast } = this.state;
+        if (this.state.loading) {
+            return (<div className="spinner-border" role="status"><span className="sr-only"></span></div>);
+        }
+
+        const { feedback, showToast } = this.state;
 
         return (
             <form className="feedback-form" ref={this.form} onSubmit={e => e.preventDefault()}>

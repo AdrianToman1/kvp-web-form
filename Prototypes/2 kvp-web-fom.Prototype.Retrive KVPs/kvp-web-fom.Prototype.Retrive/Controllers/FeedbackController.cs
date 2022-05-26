@@ -21,6 +21,19 @@ namespace kvp_web_fom.Prototype.Retrieve.Controllers
             }
         }
 
+        [HttpGet("{id}")]
+        public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken = default)
+        {
+            var feedback = await _cosmosClientProvider.Container.ReadItemAsync<Feedback>(id.ToString(), new PartitionKey("complaint"), null, cancellationToken);
+
+            if (feedback == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(feedback.Resource);
+        }
+
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] FeedbackRequest feedbackRequest, CancellationToken cancellationToken = default)
         {
@@ -45,6 +58,41 @@ namespace kvp_web_fom.Prototype.Retrieve.Controllers
             _ = await _cosmosClientProvider.Container.CreateItemAsync<Feedback>(feedBack, null, null, cancellationToken);
 
             return Ok();
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Put(Guid id, [FromBody] FeedbackRequest feedbackRequest, CancellationToken cancellationToken = default)
+        {
+            if (feedbackRequest == null)
+            {
+                throw new ArgumentNullException(nameof(feedbackRequest));
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest();
+            }
+
+            Feedback feedback = await _cosmosClientProvider.Container.ReadItemAsync<Feedback>(id.ToString(), new PartitionKey("complaint"), null, cancellationToken);
+
+            if (feedback == null)
+            {
+                feedback = new Feedback { id = id };
+            }
+
+            feedback.FeedbackType = feedbackRequest.FeedbackType;
+            feedback.FeedbackDate = feedbackRequest.FeedbackDate;
+            feedback.Comments = feedbackRequest.Comments;
+            feedback.Rating = feedbackRequest.Rating;
+
+            _ = await _cosmosClientProvider.Container.UpsertItemAsync<Feedback>(feedback, null, null, cancellationToken);
+
+            //if (entityState == EntityState.Added)
+            //{
+            //    return CreatedAtRoute("GetCountry", new { id = data.Id }, feedback);
+            //}
+
+            return Ok(feedback);
         }
     }
 
