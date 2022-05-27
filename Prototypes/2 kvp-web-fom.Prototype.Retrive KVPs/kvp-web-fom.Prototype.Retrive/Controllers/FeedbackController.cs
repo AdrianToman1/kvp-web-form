@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Cosmos;
 
 namespace kvp_web_fom.Prototype.Retrieve.Controllers
@@ -21,17 +22,20 @@ namespace kvp_web_fom.Prototype.Retrieve.Controllers
             }
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id}", Name = "GetFeedback")]
         public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken = default)
         {
-            var feedback = await _cosmosClientProvider.Container.ReadItemAsync<Feedback>(id.ToString(), new PartitionKey("complaint"), null, cancellationToken);
+            try
+            {
+                var response = await _cosmosClientProvider.Container.ReadItemAsync<Feedback>(id.ToString(),
+                    new PartitionKey("complaint"), null, cancellationToken);
 
-            if (feedback == null)
+                return Ok(response.Resource);
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
                 return NotFound();
             }
-
-            return Ok(feedback.Resource);
         }
 
         [HttpPost]
@@ -55,9 +59,9 @@ namespace kvp_web_fom.Prototype.Retrieve.Controllers
                 Rating = feedbackRequest.Rating,
             };
 
-            _ = await _cosmosClientProvider.Container.CreateItemAsync<Feedback>(feedBack, null, null, cancellationToken);
+            var response = await _cosmosClientProvider.Container.CreateItemAsync<Feedback>(feedBack, null, null, cancellationToken);
 
-            return Ok();
+            return CreatedAtRoute("GetFeedback", new { id = response.Resource.id }, response.Resource);
         }
 
         [HttpPut("{id}")]
@@ -73,9 +77,17 @@ namespace kvp_web_fom.Prototype.Retrieve.Controllers
                 return BadRequest();
             }
 
-            Feedback feedback = await _cosmosClientProvider.Container.ReadItemAsync<Feedback>(id.ToString(), new PartitionKey("complaint"), null, cancellationToken);
+            Feedback feedback;
 
-            if (feedback == null)
+            try
+            {
+                var findresponse = await _cosmosClientProvider.Container.ReadItemAsync<Feedback>(id.ToString(),
+                    new PartitionKey("complaint"), null, cancellationToken);
+
+                feedback = findresponse.Resource;
+
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
                 feedback = new Feedback { id = id };
             }
@@ -85,12 +97,12 @@ namespace kvp_web_fom.Prototype.Retrieve.Controllers
             feedback.Comments = feedbackRequest.Comments;
             feedback.Rating = feedbackRequest.Rating;
 
-            _ = await _cosmosClientProvider.Container.UpsertItemAsync<Feedback>(feedback, null, null, cancellationToken);
+            var response = await _cosmosClientProvider.Container.UpsertItemAsync<Feedback>(feedback, null, null, cancellationToken);
 
-            //if (entityState == EntityState.Added)
-            //{
-            //    return CreatedAtRoute("GetCountry", new { id = data.Id }, feedback);
-            //}
+            if (response.StatusCode == HttpStatusCode.Created)
+            {
+                return CreatedAtRoute("GetFeedback", new { id = response.Resource.id }, feedback);
+            }
 
             return Ok(feedback);
         }

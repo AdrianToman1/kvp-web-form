@@ -28,15 +28,19 @@ export class FeedbackForm extends Component {
         if (this.props.match.params.id) {
             this.setState({
                 loading: true
-            });
+            })
 
             fetch(`feedback/${this.props.match.params.id}`,
                     {
-                        method: 'get',
+                        method: "get"
                 })
-                .then((response) => 
-                        response.json()
-                )
+                .then((response) => {
+                    if (response.ok) {
+                        return response.json()
+                    } else if (response.status === 404) {
+                        throw new Error("Not Found");
+                    }
+                })
                 .then((responseJson) => {
                     this.setState({
                         loading: false, feedback: {
@@ -48,6 +52,14 @@ export class FeedbackForm extends Component {
                 })
                 .catch((error) => {
                     if (error.message === "Not Found") {
+                        this.setState({
+                            loading: false, feedback: {
+                                feedbackType: '',
+                                feedbackDate: '',
+                                comments: "",
+                                rating: ""
+                            }
+                        })
                     } else {
                     }
                 });

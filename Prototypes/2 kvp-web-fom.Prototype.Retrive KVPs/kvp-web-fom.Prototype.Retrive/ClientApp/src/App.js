@@ -12,7 +12,7 @@ export default class App extends Component {
         return (
             <Layout>
                 <Route exact path="/">
-                    <Redirect to="/fcb06c64-ce2d-49cc-b0b6-475d67c603d3" />
+                    <Redirect to="/2387bd21-1cae-44ac-ab70-fbabea07569d" />
                 </Route>
                 <Route exact path='/:id' component={FeedbackForm} />
             </Layout>
