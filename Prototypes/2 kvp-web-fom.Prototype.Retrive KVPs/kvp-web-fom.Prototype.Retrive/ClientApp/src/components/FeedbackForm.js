@@ -1,9 +1,10 @@
 import React, { Component, useEffect } from 'react';
+import { withRouter } from 'react-router';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Toast, ToastBody, ToastHeader } from "reactstrap"
 import { formatISO, parseISO, format } from "date-fns";
 
-export class FeedbackForm extends Component {
+class FeedbackForm extends Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -88,28 +89,48 @@ export class FeedbackForm extends Component {
             })
 
             const feedback1 = {
+                id: this.props.match.params.id || null,
                 feedbackType: this.state.feedback.feedbackType,
                 feedbackDate: (parseISO(this.state.feedback.feedbackDate).toISOString()),
                 comments: this.state.feedback.comments,
                 rating: this.state.feedback.rating
             }
 
-            fetch(`feedback/${this.props.match.params.id}`,
-                {
-                    method: 'put',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(feedback1)
-                }).then((responseJson) => {
-                    this.setState({
-                        saving: false,
-                        showToast: true
+            if (feedback1.id) {
+                fetch(`feedback/${feedback1.id}`,
+                        {
+                            method: 'put',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(feedback1)
+                        }).then((responseJson) => {
+                        this.setState({
+                            saving: false,
+                            showToast: true
+                        })
                     })
-                })
-                .catch((error) => {
-                    if (error.message === "Bad Request") {
-                    } else {
-                    }
-                })
+                    .catch((error) => {
+                        if (error.message === "Bad Request") {
+                        } else {
+                        }
+                    })
+            } else {
+                fetch("feedback",
+                        {
+                            method: "post",
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(feedback1)
+                        }).then((responseJson) => {
+                        this.setState({
+                            saving: false,
+                            showToast: true
+                        })
+                    })
+                    .catch((error) => {
+                        if (error.message === "Bad Request") {
+                        } else {
+                        }
+                    })
+            }
         }
     };
 
@@ -224,3 +245,5 @@ export class FeedbackForm extends Component {
         );
     }
 }
+
+export default withRouter(FeedbackForm);
