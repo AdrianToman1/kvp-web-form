@@ -48,7 +48,8 @@ export class FeedbackForm extends Component {
                             feedbackDate: formatISO(parseISO(responseJson.feedbackDate), { representation: 'date' }),
                             comments: responseJson.comments,
                             rating: responseJson.rating
-                        }})
+                        }
+                    })
                 })
                 .catch((error) => {
                     if (error.message === "Not Found") {
@@ -87,10 +88,10 @@ export class FeedbackForm extends Component {
             })
 
             const feedback1 = {
-                FeedbackType: this.state.feedback.feedbackType,
-                FeedbackDate: (parseISO(this.state.feedback.feedbackDate).toISOString()),
-                Comments: this.state.feedback.comments,
-                Rating: this.state.feedback.rating
+                feedbackType: this.state.feedback.feedbackType,
+                feedbackDate: (parseISO(this.state.feedback.feedbackDate).toISOString()),
+                comments: this.state.feedback.comments,
+                rating: this.state.feedback.rating
             }
 
             fetch(`feedback/${this.props.match.params.id}`,

@@ -1,6 +1,10 @@
-﻿using System.Net;
+﻿using System.Dynamic;
+using System.Net;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Cosmos;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace kvp_web_fom.Prototype.Retrieve.Controllers
 {
@@ -8,17 +12,19 @@ namespace kvp_web_fom.Prototype.Retrieve.Controllers
     [Route("[controller]")]
     public class FeedbackController : ControllerBase
     {
-        private readonly ILogger<FeedbackController> _logger;
         private readonly CosmosClientProvider _cosmosClientProvider;
+        private readonly ILogger<FeedbackController> _logger;
 
         public FeedbackController(CosmosClientProvider cosmosClientProvider, ILogger<FeedbackController> logger)
         {
-            _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
+            _cosmosClientProvider =
+                cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             if (_cosmosClientProvider.Container == null)
             {
-                throw new ArgumentException($"{nameof(_cosmosClientProvider.Container)} must have a value", nameof(cosmosClientProvider));
+                throw new ArgumentException($"{nameof(_cosmosClientProvider.Container)} must have a value",
+                    nameof(cosmosClientProvider));
             }
         }
 
@@ -27,106 +33,100 @@ namespace kvp_web_fom.Prototype.Retrieve.Controllers
         {
             try
             {
-                var response = await _cosmosClientProvider.Container.ReadItemAsync<Feedback>(id.ToString(),
+                var response = await _cosmosClientProvider.Container.ReadItemAsync<dynamic>(id.ToString(),
                     new PartitionKey("complaint"), null, cancellationToken);
 
-                return Ok(response.Resource);
+                return Content(JsonConvert.SerializeObject(response.Resource, new JsonSerializerSettings
+                {
+                    ContractResolver = new CamelCasePropertyNamesContractResolver()
+                }), "application/json");
             }
-            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
                 return NotFound();
             }
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] FeedbackRequest feedbackRequest, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> Post([FromBody] IDictionary<string, object?> formData,
+            CancellationToken cancellationToken = default)
         {
-            if (feedbackRequest == null)
+            if (formData == null)
             {
-                throw new ArgumentNullException(nameof(feedbackRequest));
+                throw new ArgumentNullException(nameof(formData));
             }
 
-            if (!ModelState.IsValid)
-            {
-                return BadRequest();
-            }
+            var response =
+                await _cosmosClientProvider.Container.CreateItemAsync(formData, null, null, cancellationToken);
 
-            var feedBack = new Feedback
-            {
-                FeedbackType = feedbackRequest.FeedbackType,
-                FeedbackDate = feedbackRequest.FeedbackDate,
-                Comments = feedbackRequest.Comments,
-                Rating = feedbackRequest.Rating,
-            };
-
-            var response = await _cosmosClientProvider.Container.CreateItemAsync<Feedback>(feedBack, null, null, cancellationToken);
-
-            return CreatedAtRoute("GetFeedback", new { id = response.Resource.id }, response.Resource);
+            return CreatedAtRoute("GetFeedback", new { id = response.Resource["id"] }, response.Resource);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Put(Guid id, [FromBody] FeedbackRequest feedbackRequest, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> Put(Guid id, [FromBody] IDictionary<string, object?> formData,
+            CancellationToken cancellationToken = default)
         {
-            if (feedbackRequest == null)
+            if (formData == null)
             {
-                throw new ArgumentNullException(nameof(feedbackRequest));
+                throw new ArgumentNullException(nameof(formData));
             }
 
-            if (!ModelState.IsValid)
-            {
-                return BadRequest();
-            }
-
-            Feedback feedback;
+            IDictionary<string, object?> existingFormData;
 
             try
             {
-                var findresponse = await _cosmosClientProvider.Container.ReadItemAsync<Feedback>(id.ToString(),
-                    new PartitionKey("complaint"), null, cancellationToken);
+                var existingFormDataResponse =
+                    await _cosmosClientProvider.Container.ReadItemAsync<IDictionary<string, object?>>(id.ToString(),
+                        new PartitionKey("complaint"), null, cancellationToken);
 
-                feedback = findresponse.Resource;
-
+                existingFormData = existingFormDataResponse.Resource;
             }
-            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
-                feedback = new Feedback { id = id };
+                existingFormData = new ExpandoObject();
+                existingFormData["id"] = id;
             }
 
-            feedback.FeedbackType = feedbackRequest.FeedbackType;
-            feedback.FeedbackDate = feedbackRequest.FeedbackDate;
-            feedback.Comments = feedbackRequest.Comments;
-            feedback.Rating = feedbackRequest.Rating;
+            var mergedFormData = Merge(existingFormData, formData);
 
-            var response = await _cosmosClientProvider.Container.UpsertItemAsync<Feedback>(feedback, null, null, cancellationToken);
+            var upsertResponse =
+                await _cosmosClientProvider.Container.UpsertItemAsync(mergedFormData, null, null, cancellationToken);
 
-            if (response.StatusCode == HttpStatusCode.Created)
+            if (upsertResponse.StatusCode == HttpStatusCode.Created)
             {
-                return CreatedAtRoute("GetFeedback", new { id = response.Resource.id }, feedback);
+                return CreatedAtRoute("GetFeedback", new { id = upsertResponse.Resource["id"] }, upsertResponse);
             }
 
-            return Ok(feedback);
+            return Ok(mergedFormData);
         }
-    }
 
-    public class FeedbackRequest
-    {
-        public string? FeedbackType { get; set; }
-        public DateTime? FeedbackDate { get; set; }
-        public string? Comments { get; set; }
-        public int? Rating { get; set; }
-    }
-
-    public class Feedback
-    {
-        public Feedback()
+        private static IDictionary<string, object?> Merge(IDictionary<string, object?> baseValue,
+            IDictionary<string, object?> updatedValues)
         {
-            id = Guid.NewGuid();
-        }
+            IDictionary<string, object?> result = new ExpandoObject();
 
-        public Guid id { get; set; }
-        public string? FeedbackType { get; set; }
-        public DateTime? FeedbackDate { get; set; }
-        public string? Comments { get; set; }
-        public int? Rating { get; set; }
+            foreach (var property in baseValue)
+            {
+                result[property.Key] = property.Value;
+            }
+
+            foreach (var property in updatedValues)
+            {
+                if (property.Value == null)
+                {
+                    result[property.Key] = null;
+                }
+                else if (property.Value is JsonElement?)
+                {
+                    result[property.Key] = (property.Value as JsonElement?)?.GetString();
+                }
+                else
+                {
+                    result[property.Key] = property.Value;
+                }
+            }
+
+            return result;
+        }
     }
 }

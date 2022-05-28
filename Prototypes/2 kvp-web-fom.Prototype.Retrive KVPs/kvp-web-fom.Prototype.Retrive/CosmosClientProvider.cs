@@ -29,7 +29,7 @@ public class CosmosClientProvider : IDisposable
         var database =
             await cosmosClient.CreateDatabaseIfNotExistsAsync(databaseId);
         var container =
-                    await database.Database.CreateContainerIfNotExistsAsync(containerId, "/FeedbackType");
+                    await database.Database.CreateContainerIfNotExistsAsync(containerId, "/feedbackType");
 
         return new CosmosClientProvider(cosmosClient, database.Database, container.Container);
     }
