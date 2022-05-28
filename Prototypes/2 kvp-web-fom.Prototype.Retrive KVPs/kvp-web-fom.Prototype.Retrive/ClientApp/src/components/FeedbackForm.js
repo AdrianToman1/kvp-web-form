@@ -32,8 +32,8 @@ class FeedbackForm extends Component {
             })
 
             fetch(`feedback/${this.props.match.params.id}`,
-                    {
-                        method: "get"
+                {
+                    method: "get"
                 })
                 .then((response) => {
                     if (response.ok) {
@@ -98,11 +98,11 @@ class FeedbackForm extends Component {
 
             if (feedback1.id) {
                 fetch(`feedback/${feedback1.id}`,
-                        {
-                            method: 'put',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(feedback1)
-                        }).then((responseJson) => {
+                    {
+                        method: 'put',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(feedback1)
+                    }).then((responseJson) => {
                         this.setState({
                             saving: false,
                             showToast: true
@@ -115,11 +115,11 @@ class FeedbackForm extends Component {
                     })
             } else {
                 fetch("feedback",
-                        {
-                            method: "post",
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(feedback1)
-                        }).then((responseJson) => {
+                    {
+                        method: "post",
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(feedback1)
+                    }).then((responseJson) => {
                         this.setState({
                             saving: false,
                             showToast: true
@@ -132,6 +132,33 @@ class FeedbackForm extends Component {
                     })
             }
         }
+    };
+
+    handleDelete = () => {
+        this.setState({
+            saving: true
+        })
+
+        fetch(`feedback/${this.props.match.params.id}`,
+            {
+                method: 'delete'
+            })
+            .then((responseJson) => {
+                this.setState({
+                    saving: false
+                })
+                this.props.history.push("/forms")
+            })
+            .catch((error) => {
+                if (error.message === "Not Found") {
+                    this.setState({ notFound: true });
+                } else if (error.message === "Conflict") {
+                    this.setState({ busy: false });
+                    this.handleDisallowedDeletion();
+                } else {
+                    this.setState({ serverError: true });
+                }
+            });
     };
 
     handleFeedbackTypeChange = e => {
@@ -230,12 +257,16 @@ class FeedbackForm extends Component {
                             </div>
                         </div>
                     </div>
-                    <footer className="card-footer">
+                    <footer className="card-footer d-flex justify-content-between">
                         <button
                             className="save-button"
                             onClick={this.handleSave}
                             disabled={this.state.saving}
                             label="Save">Save</button>
+                        <button
+                            className="delete-button"
+                            onClick={this.handleDelete}
+                            label="Cancel">Delete</button>
                     </footer>
                 </div>
                 <Toast isOpen={showToast}>

@@ -123,6 +123,22 @@ namespace kvp_web_fom.Prototype.Retrieve.Controllers
             return Ok(mergedFormData);
         }
 
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var delateResponse =
+                    await _cosmosClientProvider.Container.DeleteItemAsync<IDictionary<string, object?>>(id.ToString(), new PartitionKey("complaint"), null, cancellationToken);
+
+                return NoContent();
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                return NotFound();
+            }
+        }
+
         private static IDictionary<string, object?> Merge(IDictionary<string, object?> baseValue,
             IDictionary<string, object?> updatedValues)
         {
