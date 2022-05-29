@@ -1,10 +1,9 @@
 import React, { Component, useEffect } from 'react';
-import { withRouter } from 'react-router';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Toast, ToastBody, ToastHeader } from "reactstrap"
 import { formatISO, parseISO, format } from "date-fns";
 
-class FeedbackForm extends Component {
+export class FeedbackForm extends Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -32,8 +31,8 @@ class FeedbackForm extends Component {
             })
 
             fetch(`feedback/${this.props.match.params.id}`,
-                {
-                    method: "get"
+                    {
+                        method: "get"
                 })
                 .then((response) => {
                     if (response.ok) {
@@ -89,76 +88,29 @@ class FeedbackForm extends Component {
             })
 
             const feedback1 = {
-                id: this.props.match.params.id || null,
                 feedbackType: this.state.feedback.feedbackType,
                 feedbackDate: (parseISO(this.state.feedback.feedbackDate).toISOString()),
                 comments: this.state.feedback.comments,
                 rating: this.state.feedback.rating
             }
 
-            if (feedback1.id) {
-                fetch(`feedback/${feedback1.id}`,
-                    {
-                        method: 'put',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(feedback1)
-                    }).then((responseJson) => {
-                        this.setState({
-                            saving: false,
-                            showToast: true
-                        })
+            fetch(`feedback/${this.props.match.params.id}`,
+                {
+                    method: 'put',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(feedback1)
+                }).then((responseJson) => {
+                    this.setState({
+                        saving: false,
+                        showToast: true
                     })
-                    .catch((error) => {
-                        if (error.message === "Bad Request") {
-                        } else {
-                        }
-                    })
-            } else {
-                fetch("feedback",
-                    {
-                        method: "post",
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(feedback1)
-                    }).then((responseJson) => {
-                        this.setState({
-                            saving: false,
-                            showToast: true
-                        })
-                    })
-                    .catch((error) => {
-                        if (error.message === "Bad Request") {
-                        } else {
-                        }
-                    })
-            }
-        }
-    };
-
-    handleDelete = () => {
-        this.setState({
-            saving: true
-        })
-
-        fetch(`feedback/${this.props.match.params.id}`,
-            {
-                method: 'delete'
-            })
-            .then((responseJson) => {
-                this.setState({
-                    saving: false
                 })
-                this.props.history.push("/forms")
-            })
-            .catch((error) => {
-                if (error.message === "Not Found") {
-                    this.setState({ notFound: true });
-                } else if (error.message === "Conflict") {
-                    this.setState({ busy: false });
-                    this.handleDisallowedDeletion();
-                } else {
-                    this.setState({ serverError: true });
-                }
-            });
+                .catch((error) => {
+                    if (error.message === "Bad Request") {
+                    } else {
+                    }
+                })
+        }
     };
 
     handleFeedbackTypeChange = e => {
@@ -257,16 +209,12 @@ class FeedbackForm extends Component {
                             </div>
                         </div>
                     </div>
-                    <footer className="card-footer d-flex justify-content-between">
+                    <footer className="card-footer">
                         <button
                             className="save-button"
                             onClick={this.handleSave}
                             disabled={this.state.saving}
                             label="Save">Save</button>
-                        <button
-                            className="delete-button"
-                            onClick={this.handleDelete}
-                            label="Cancel">Delete</button>
                     </footer>
                 </div>
                 <Toast isOpen={showToast}>
@@ -276,5 +224,3 @@ class FeedbackForm extends Component {
         );
     }
 }
-
-export default withRouter(FeedbackForm);

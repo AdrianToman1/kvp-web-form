@@ -28,12 +28,30 @@ namespace kvp_web_fom.Prototype.CRUD.Controllers
             }
         }
 
+        [HttpGet]
+        public IActionResult Get()
+        {
+            try
+            {
+                var q = _cosmosClientProvider.Container.GetItemLinqQueryable<IDictionary<string, object?>>(true);
+                
+                return Content(JsonConvert.SerializeObject(q.ToList(), new JsonSerializerSettings
+                {
+                    ContractResolver = new CamelCasePropertyNamesContractResolver()
+                }), "application/json");
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                return NotFound();
+            }
+        }
+
         [HttpGet("{id}", Name = "GetFeedback")]
         public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken = default)
         {
             try
             {
-                var response = await _cosmosClientProvider.Container.ReadItemAsync<dynamic>(id.ToString(),
+                var response = await _cosmosClientProvider.Container.ReadItemAsync<IDictionary<string, object?>>(id.ToString(),
                     new PartitionKey("complaint"), null, cancellationToken);
 
                 return Content(JsonConvert.SerializeObject(response.Resource, new JsonSerializerSettings
@@ -56,8 +74,13 @@ namespace kvp_web_fom.Prototype.CRUD.Controllers
                 throw new ArgumentNullException(nameof(formData));
             }
 
+            IDictionary<string, object?> existingFormData = new ExpandoObject();
+            existingFormData["id"] = Guid.NewGuid().ToString();
+
+            var mergedFormData = Merge(formData, existingFormData);
+
             var response =
-                await _cosmosClientProvider.Container.CreateItemAsync(formData, null, null, cancellationToken);
+                await _cosmosClientProvider.Container.CreateItemAsync(mergedFormData, null, null, cancellationToken);
 
             return CreatedAtRoute("GetFeedback", new { id = response.Resource["id"] }, response.Resource);
         }
@@ -100,6 +123,22 @@ namespace kvp_web_fom.Prototype.CRUD.Controllers
             return Ok(mergedFormData);
         }
 
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var delateResponse =
+                    await _cosmosClientProvider.Container.DeleteItemAsync<IDictionary<string, object?>>(id.ToString(), new PartitionKey("complaint"), null, cancellationToken);
+
+                return NoContent();
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                return NotFound();
+            }
+        }
+
         private static IDictionary<string, object?> Merge(IDictionary<string, object?> baseValue,
             IDictionary<string, object?> updatedValues)
         {
@@ -107,7 +146,18 @@ namespace kvp_web_fom.Prototype.CRUD.Controllers
 
             foreach (var property in baseValue)
             {
-                result[property.Key] = property.Value;
+                if (property.Value == null)
+                {
+                    result[property.Key] = null;
+                }
+                else if (property.Value is JsonElement?)
+                {
+                    result[property.Key] = (property.Value as JsonElement?)?.GetString();
+                }
+                else
+                {
+                    result[property.Key] = property.Value;
+                }
             }
 
             foreach (var property in updatedValues)
